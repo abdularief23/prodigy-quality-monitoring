@@ -1,11 +1,22 @@
-# Environment variables
+# Environment variables - JANGAN PUSH!
 .env
 .env.local
 .env.*.local
+backend/.env
+frontend/.env
 
 # Node modules
 node_modules/
+npm-debug.log
 
-# Secrets
-*.key
-*.pem
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
