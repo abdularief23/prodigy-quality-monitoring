@@ -48,12 +48,6 @@ export default function Dashboard({ problems, insights, loading, error }) {
     margin: '0 0 0.5rem 0',
   };
 
-  const errorTipStyle = {
-    color: '#dc2626',
-    fontSize: '0.75rem',
-    margin: 0,
-  };
-
   const gridStyle = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -102,9 +96,6 @@ export default function Dashboard({ problems, insights, loading, error }) {
         <div style={errorStyle}>
           <p style={errorTitleStyle}>❌ Error</p>
           <p style={errorTextStyle}>{error}</p>
-          <p style={errorTipStyle}>
-            💡 Make sure backend is running on port 5000
-          </p>
         </div>
       </div>
     );

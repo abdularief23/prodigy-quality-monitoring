@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 export default function AIChat({ selectedProblem }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -17,7 +15,7 @@ export default function AIChat({ selectedProblem }) {
 
     try {
       setLoading(true);
-      const response = await axios.post(`${API_URL}/api/chat`, {
+      const response = await axios.post('/api/chat', {
         message: input,
         problem_id: selectedProblem.id,
       });

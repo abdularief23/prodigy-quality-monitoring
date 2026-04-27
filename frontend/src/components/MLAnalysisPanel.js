@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 export default function MLAnalysisPanel({ problem }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +14,7 @@ export default function MLAnalysisPanel({ problem }) {
   const analyzeProblem = async () => {
     try {
       setLoading(true);
-      const response = await axios.post(`${API_URL}/api/analyze`, {
+      const response = await axios.post('/api/analyze', {
         description: problem.description,
         problem_id: problem.id,
       });

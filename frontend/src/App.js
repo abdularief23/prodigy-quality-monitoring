@@ -4,10 +4,6 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import './App.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-console.log('🔗 API URL:', API_URL);
-
 export default function App() {
   const [problems, setProblems] = useState([]);
   const [insights, setInsights] = useState(null);
@@ -24,8 +20,8 @@ export default function App() {
       setError(null);
 
       const [problemsRes, insightsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/problems`),
-        axios.get(`${API_URL}/api/insights`),
+        axios.get('/api/problems'),
+        axios.get('/api/insights'),
       ]);
 
       setProblems(problemsRes.data.data || []);
@@ -33,7 +29,7 @@ export default function App() {
     } catch (err) {
       console.error('❌ Error fetching data:', err);
       setError(
-        err.response?.data?.message || 'Failed to fetch data. Backend unavailable?'
+        err.response?.data?.message || 'Failed to fetch data. Please try again later.'
       );
     } finally {
       setLoading(false);
