@@ -1,73 +1,86 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
-export default function Header({ onRefresh }) {
-  const headerStyle = {
-    background: 'linear-gradient(to right, #2563eb, #1e40af)',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  };
+export default function Header({ onRefresh, onExcelUpload, uploading, analyzing }) {
+  const fileInputRef = useRef(null);
 
-  const containerStyle = {
-    maxWidth: '1280px',
-    margin: '0 auto',
-    padding: '0 1rem',
-  };
-
-  const contentStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: '1.5rem',
-    paddingBottom: '1.5rem',
-  };
-
-  const titleStyle = {
-    color: 'white',
-  };
-
-  const h1Style = {
-    fontSize: '1.875rem',
-    fontWeight: 'bold',
-    margin: '0',
-  };
-
-  const subtitleStyle = {
-    color: '#dbeafe',
-    fontSize: '0.875rem',
-    marginTop: '0.25rem',
-  };
-
-  const buttonStyle = {
-    padding: '0.5rem 1rem',
-    backgroundColor: 'white',
-    color: '#2563eb',
-    fontWeight: '600',
-    border: 'none',
-    borderRadius: '0.5rem',
-    cursor: 'pointer',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'background-color 0.2s',
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
-    <header style={headerStyle}>
-      <div style={containerStyle}>
-        <div style={contentStyle}>
-          <div style={titleStyle}>
-            <h1 style={h1Style}>⚙️ Prodigy</h1>
-            <p style={subtitleStyle}>
-              AI-Powered Production Problem Detection System
-            </p>
-          </div>
-          <button
-            onClick={onRefresh}
-            style={buttonStyle}
-            onMouseOver={(e) => (e.target.style.backgroundColor = '#f3f4f6')}
-            onMouseOut={(e) => (e.target.style.backgroundColor = 'white')}
-          >
-            🔄 Refresh
-          </button>
-        </div>
+    <div
+      style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        padding: '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      }}
+    >
+      {/* Logo & Title */}
+      <div>
+        <h1 style={{ margin: '0 0 5px 0', fontSize: '28px' }}>⚙️ Prodigy</h1>
+        <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>
+          AI-Powered Production Problem Detection System
+        </p>
       </div>
-    </header>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        {/* Excel Upload Button */}
+        <button
+          onClick={handleUploadClick}
+          disabled={uploading || analyzing}
+          style={{
+            background: uploading || analyzing ? '#999' : '#10b981',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: uploading || analyzing ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          {uploading ? '⏳ Uploading...' : analyzing ? '🔍 Analyzing...' : '📤 Upload Excel'}
+        </button>
+
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={onExcelUpload}
+          style={{ display: 'none' }}
+          disabled={uploading || analyzing}
+        />
+
+        {/* Refresh Button */}
+        <button
+          onClick={onRefresh}
+          disabled={uploading || analyzing}
+          style={{
+            background: uploading || analyzing ? '#999' : '#3b82f6',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: uploading || analyzing ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
   );
 }

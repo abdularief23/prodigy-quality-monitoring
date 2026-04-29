@@ -1,0 +1,133 @@
+.problem-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.problem-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.problem-card.selected {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+.step-container {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border-left: 4px solid #a855f7;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.step-number {
+  background: #a855f7;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.step-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.step-type-diagnose {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.step-type-action {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.step-type-verify {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.step-risk-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.step-risk-low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.step-risk-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.step-risk-high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.insight-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 3px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.detail-panel {
+  margin-top: 40px;
+  padding-bottom: 40px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 1200px) {
+  .problem-card {
+    grid-column: span 2 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .problem-card {
+    grid-column: span 1 !important;
+  }
+
+  .insight-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
