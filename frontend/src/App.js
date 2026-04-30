@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
-import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
 export default function App() {
-  // ==================== STATE ====================
   const [problems, setProblems] = useState([]);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const pollRef = useRef(null);
 
-  // ==================== FETCH PROBLEMS ====================
   const fetchProblems = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('📥 Fetching problems from API...');
 
       const response = await axios.get(`${API_BASE_URL}/problems-with-full-analysis`);
 
@@ -29,42 +26,30 @@ export default function App() {
         console.log(`✅ Loaded ${response.data.data.length} problems`);
       }
     } catch (err) {
-      console.error('❌ Error fetching problems:', err.message);
-      setError('Failed to load problems. Please try again.');
+      console.error('❌ Fetch error:', err.message);
+      setError('Failed to load problems.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ==================== FETCH INSIGHTS ====================
   const fetchInsights = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/insights`);
-
       if (response.data.status === 'success') {
         setInsights(response.data.data);
-        console.log('✅ Insights loaded');
       }
     } catch (err) {
-      console.error('❌ Error fetching insights:', err.message);
+      console.error('❌ Insights error:', err.message);
     }
   };
 
-  // ==================== INITIAL LOAD ====================
+  // Initial load only once
   useEffect(() => {
     fetchProblems();
     fetchInsights();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchProblems();
-      fetchInsights();
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, []);
 
-  // ==================== HANDLE FILE UPLOAD ====================
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
 
@@ -74,7 +59,7 @@ export default function App() {
     }
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('❌ Please upload an Excel file (.xlsx or .xls)');
+      alert('❌ Please upload .xlsx or .xls file');
       return;
     }
 
@@ -92,9 +77,8 @@ export default function App() {
         `${API_BASE_URL}/upload-excel`,
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
           onUploadProgress: (progressEvent) => {
             const progress = Math.round(
               (progressEvent.loaded / progressEvent.total) * 100
@@ -105,89 +89,134 @@ export default function App() {
       );
 
       if (response.data.status === 'success') {
-        alert(
-          `✅ ${response.data.data.importedRows} problems imported successfully!\n\nAnalysis in progress...`
-        );
-        console.log('✅ Upload successful:', response.data.message);
-
-        // Reset file input
+        alert(`✅ Upload berhasil!\n\n${response.data.message || 'Data imported.'}`);
         event.target.value = '';
 
-        // Refresh data after 2 seconds
+        // Wait for backend to finish processing, then refresh once
         setTimeout(() => {
           fetchProblems();
           fetchInsights();
-        }, 2000);
-
-        // Continue polling for 30 seconds
-        let pollCount = 0;
-        const pollInterval = setInterval(() => {
-          pollCount++;
-          fetchProblems();
-          fetchInsights();
-
-          if (pollCount >= 15) {
-            clearInterval(pollInterval);
-          }
-        }, 2000);
+        }, 5000);
       }
     } catch (err) {
-      console.error('❌ Upload error:', err.message);
-      setError(`Upload failed: ${err.response?.data?.message || err.message}`);
-      alert(`❌ Upload failed: ${err.response?.data?.message || err.message}`);
+      const errorMsg = err.response?.data?.message || err.message;
+      alert(`❌ Upload failed: ${errorMsg}`);
+      setError(`Upload failed: ${errorMsg}`);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
 
-  // ==================== HANDLE REFRESH ====================
   const handleRefresh = async () => {
-    console.log('🔄 Refreshing data...');
+    console.log('🔄 Refreshing...');
     await fetchProblems();
     await fetchInsights();
   };
 
-  // ==================== HANDLE ANALYZE PROBLEM ====================
-  const handleAnalyzeProblem = async (problemId, description) => {
+  const handleReset = async () => {
+    if (!window.confirm('⚠️ Reset semua data?')) return;
+
     try {
-      console.log(`🔍 Analyzing problem: ${problemId}`);
-
-      const response = await axios.post(`${API_BASE_URL}/analyze`, {
-        problem_id: problemId,
-        description: description,
-      });
-
-      if (response.data.status === 'success') {
-        console.log('✅ Analysis complete');
-        // Refresh to show new analysis
-        setTimeout(() => {
-          fetchProblems();
-        }, 1000);
-      }
+      await axios.post(`${API_BASE_URL}/full-reset`);
+      alert('✅ Database reset! Upload Excel baru.');
+      setProblems([]);
+      setInsights(null);
     } catch (err) {
-      console.error('❌ Analysis error:', err.message);
-      setError(`Analysis failed: ${err.message}`);
+      alert('❌ Reset failed: ' + err.message);
     }
   };
 
-  // ==================== RENDER ====================
   return (
     <div className="App">
-      {/* ==================== HEADER ==================== */}
-      <Header onFileUpload={handleFileUpload} isUploading={isUploading} uploadProgress={uploadProgress} />
+      <header
+        style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '15px 20px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 99,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1400px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <h1 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>
+              ⚙️ Prodigy
+            </h1>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+              AI-Powered Production Problem Detection System
+            </p>
+          </div>
 
-      {/* ==================== UPLOAD PROGRESS ==================== */}
-      {isUploading && uploadProgress > 0 && (
-        <div style={{
-          position: 'fixed',
-          top: '80px',
-          left: '0',
-          right: '0',
-          height: '4px',
-          background: '#e5e7eb',
-          zIndex: 100,
-        }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <label
+              style={{
+                background: isUploading ? '#9ca3af' : '#10b981',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                display: 'inline-block',
+              }}
+            >
+              {isUploading ? `⏳ Uploading ${uploadProgress}%...` : '📤 Upload Excel'}
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            <button
+              onClick={handleRefresh}
+              style={{
+                background: '#3b82f6',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+              }}
+            >
+              🔄 Refresh
+            </button>
+
+            <button
+              onClick={handleReset}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+              }}
+            >
+              🗑️ Reset
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {isUploading && (
+        <div style={{ height: '4px', background: '#e5e7eb' }}>
           <div
             style={{
               height: '100%',
@@ -199,7 +228,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== MAIN CONTENT ==================== */}
       <main style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <Dashboard
           problems={problems}
@@ -207,21 +235,20 @@ export default function App() {
           loading={loading}
           error={error}
           onRefresh={handleRefresh}
-          onAnalyze={handleAnalyzeProblem}
         />
       </main>
 
-      {/* ==================== FOOTER ==================== */}
-      <footer style={{
-        marginTop: '40px',
-        padding: '20px',
-        textAlign: 'center',
-        color: '#999',
-        fontSize: '12px',
-        borderTop: '1px solid #e5e7eb',
-      }}>
-        <p>🚀 Prodigy AI-Powered Production Problem Detection System v2.1</p>
-        <p>Auto-refreshes every 30 seconds | API: {API_BASE_URL}</p>
+      <footer
+        style={{
+          marginTop: '40px',
+          padding: '20px',
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '12px',
+          borderTop: '1px solid #e5e7eb',
+        }}
+      >
+        <p>🚀 Prodigy v3.0 - AI-Powered Production Problem Detection</p>
       </footer>
     </div>
   );

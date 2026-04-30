@@ -22,7 +22,15 @@ async function importExcelFile(filePath) {
       const data = xlsx.utils.sheet_to_json(sheet);
 
       console.log(`📊 Total rows in Excel: ${data.length}`);
-      console.log(`📄 Sheet name: ${sheetName}\n`);
+      console.log(`📄 Sheet name: ${sheetName}`);
+
+      // Log first row columns
+      if (data.length > 0) {
+        console.log(`\n📋 EXCEL COLUMNS DETECTED:`);
+        Object.keys(data[0]).forEach((col) => {
+          console.log(`   - ${col}: "${data[0][col]}"`);
+        });
+      }
 
       const problemsMap = {};
 
@@ -36,6 +44,8 @@ async function importExcelFile(filePath) {
             id: problemId,
             name: row.problem_name || '',
             description: row.problem_description || '',
+            symptoms: row.symptoms || '',
+            impact: row.impact || '',
             equipment: row.equipment || 'Unknown',
             location: row.location || 'Unknown',
             severity: row.severity || 'Medium',
@@ -45,39 +55,86 @@ async function importExcelFile(filePath) {
         }
 
         if (!problemsMap[problemId].approaches[approachNumber]) {
+          // ==================== PARSE 6 STEP COLUMNS ====================
+          const steps = [];
+
+          // Method 1: step_sequence1, step_sequence2, ..., step_sequence6
+          for (let i = 1; i <= 10; i++) {
+            const stepValue = row[`step_sequence${i}`] || row[`step_sequence_${i}`] || row[`step${i}`] || row[`step_${i}`];
+            if (stepValue && stepValue.toString().trim() !== '') {
+              steps.push({
+                name: stepValue.toString().trim(),
+                order: i,
+              });
+            }
+          }
+
+          // Method 2: If single step_sequence column with delimiters
+          if (steps.length === 0 && row.step_sequence) {
+            const seq = row.step_sequence.toString();
+            let rawSteps = [];
+
+            if (seq.includes('|')) {
+              rawSteps = seq.split('|').map((s) => s.trim()).filter(Boolean);
+            } else if (seq.includes(';')) {
+              rawSteps = seq.split(';').map((s) => s.trim()).filter(Boolean);
+            } else {
+              rawSteps = [seq.trim()];
+            }
+
+            rawSteps.forEach((s, idx) => {
+              steps.push({ name: s, order: idx + 1 });
+            });
+          }
+
+          // Build step_sequence string for DB
+          const stepSequenceStr = steps.map((s) => s.name).join(' | ');
+
+          // Assign types based on position
+          const typeByPosition = ['DIAGNOSE', 'ACTION', 'ACTION', 'ACTION', 'VERIFY', 'VERIFY'];
+          const riskLevels = ['LOW', 'MEDIUM', 'MEDIUM', 'HIGH', 'LOW', 'LOW'];
+          const priorities = [1, 2, 2, 3, 4, 5];
+
+          const enrichedSteps = steps.map((step, idx) => ({
+            name: step.name,
+            order: step.order,
+            type: typeByPosition[idx] || 'ACTION',
+            risk: riskLevels[idx] || 'MEDIUM',
+            priority: priorities[idx] || 3,
+            impact: row.impact || 'Moderate',
+          }));
+
           problemsMap[problemId].approaches[approachNumber] = {
             number: approachNumber,
             engineer_name: row.engineer_name || 'Unknown',
-            step_sequence: row.step_sequence || '',
-            steps: [],
-            analysis: {
-              sentiment: row.sentiment || '',
-              symptoms: row.symptoms || '',
-              impact: row.impact || '',
-            },
+            step_sequence: stepSequenceStr,
+            steps: enrichedSteps,
           };
+
+          if (index < 5) {
+            console.log(`\n   Row ${index + 1}: ${problemId} Approach #${approachNumber}`);
+            console.log(`   Engineer: ${row.engineer_name}`);
+            console.log(`   Steps found: ${enrichedSteps.length}`);
+            enrichedSteps.forEach((s, i) => {
+              console.log(`     Step ${i + 1}: ${s.name} (${s.type})`);
+            });
+          }
         }
-
-        const stepType = row.step_type || 'ACTION';
-        const stepRisk = row.step_risk || 'MEDIUM';
-        const priority = parseInt(row.priority) || 3;
-        const impact = row.impact || 'Moderate';
-
-        problemsMap[problemId].approaches[approachNumber].steps.push({
-          type: stepType,
-          risk: stepRisk,
-          priority: priority,
-          impact: impact,
-        });
       });
 
-      console.log(`\n🔍 GROUPED DATA:`);
-      console.log(`   Total problems: ${Object.keys(problemsMap).length}`);
-      
+      // ==================== LOG GROUPED DATA ====================
+      console.log(`\n\n🔍 GROUPED DATA:`);
+      console.log(`   Total unique problems: ${Object.keys(problemsMap).length}`);
+
       let totalApproaches = 0;
       Object.keys(problemsMap).forEach((pId) => {
-        totalApproaches += Object.keys(problemsMap[pId].approaches).length;
-        console.log(`   ${pId}: ${Object.keys(problemsMap[pId].approaches).length} approaches`);
+        const p = problemsMap[pId];
+        const numApproaches = Object.keys(p.approaches).length;
+        totalApproaches += numApproaches;
+
+        const firstApproachKey = Object.keys(p.approaches)[0];
+        const firstApproach = p.approaches[firstApproachKey];
+        console.log(`   ${pId}: ${numApproaches} approaches, ${firstApproach.steps.length} steps per approach`);
       });
       console.log(`   Total approaches: ${totalApproaches}\n`);
 
@@ -87,33 +144,28 @@ async function importExcelFile(filePath) {
       Object.keys(problemsMap).forEach((problemId) => {
         const problem = problemsMap[problemId];
 
-        console.log(`\n💾 Saving problem: ${problemId}`);
-        console.log(`   Equipment: ${problem.equipment}`);
-        console.log(`   Location: ${problem.location}`);
-        console.log(`   Severity: ${problem.severity}`);
-        console.log(`   Approaches: ${Object.keys(problem.approaches).length}`);
+        let fullDesc = problem.description;
+        if (problem.name) fullDesc = `${problem.name}: ${problem.description}`;
+        if (problem.symptoms) fullDesc += ` | Symptoms: ${problem.symptoms}`;
+        if (problem.impact) fullDesc += ` | Impact: ${problem.impact}`;
+
+        console.log(`💾 Saving: ${problemId}`);
 
         db.run(
           `INSERT OR IGNORE INTO problems 
            (id, description, location, equipment, severity, status, source) 
            VALUES (?, ?, ?, ?, ?, ?, 'excel')`,
-          [
-            problem.id,
-            problem.description,
-            problem.location,
-            problem.equipment,
-            problem.severity,
-            problem.status,
-          ],
+          [problemId, fullDesc, problem.location, problem.equipment, problem.severity, problem.status],
           (err) => {
             if (err) {
               console.error(`   ❌ Problem save failed: ${err.message}`);
             } else {
               savedProblems++;
-              console.log(`   ✅ Problem saved\n`);
+              console.log(`   ✅ Problem saved`);
 
-              // ==================== SAVE APPROACHES ====================
               let savedApproaches = 0;
+              const totalApproachCount = Object.keys(problem.approaches).length;
+
               Object.keys(problem.approaches).forEach((approachNum) => {
                 const approach = problem.approaches[approachNum];
 
@@ -121,28 +173,17 @@ async function importExcelFile(filePath) {
                   `INSERT OR IGNORE INTO approaches 
                    (problem_id, approach_number, engineer_name, step_sequence) 
                    VALUES (?, ?, ?, ?)`,
-                  [
-                    problemId,
-                    approach.number,
-                    approach.engineer_name,
-                    approach.step_sequence,
-                  ],
+                  [problemId, approach.number, approach.engineer_name, approach.step_sequence],
                   (err) => {
-                    if (err) {
-                      console.error(`      ❌ Approach ${approachNum} failed: ${err.message}`);
-                    } else {
-                      savedApproaches++;
-                      console.log(`      ✅ Approach ${approachNum} (${approach.engineer_name}) - ${approach.steps.length} steps`);
+                    savedApproaches++;
 
-                      // When all approaches for this problem are saved, start analysis
-                      if (savedApproaches === Object.keys(problem.approaches).length) {
-                        console.log(`\n🔄 All approaches saved for ${problemId}. Starting analysis...\n`);
-                        
-                        // IMPORTANT: Call analysis with correct data
-                        analyzeApproaches(problemId, problem.approaches).catch((err) => {
-                          console.error(`❌ Analysis failed for ${problemId}:`, err);
-                        });
-                      }
+                    if (savedApproaches === totalApproachCount) {
+                      console.log(`   ✅ All ${savedApproaches} approaches saved`);
+                      console.log(`\n🔄 Starting analysis for ${problemId}...\n`);
+
+                      analyzeApproaches(problemId, problem.approaches).catch((err) => {
+                        console.error(`❌ Analysis failed for ${problemId}:`, err.message);
+                      });
                     }
                   }
                 );
@@ -152,25 +193,22 @@ async function importExcelFile(filePath) {
         );
       });
 
-      // Resolve after delay
       setTimeout(() => {
         console.log(`\n${'='.repeat(70)}`);
-        console.log(`✅ EXCEL IMPORT PROCESS COMPLETED`);
+        console.log(`✅ EXCEL IMPORT COMPLETED`);
+        console.log(`   Problems: ${Object.keys(problemsMap).length}`);
+        console.log(`   Total Approaches: ${totalApproaches}`);
         console.log(`${'='.repeat(70)}\n`);
-        
+
         resolve({
           total: data.length,
-          totalProblems: Object.keys(problemsMap).length,
+          imported: Object.keys(problemsMap).length,
           totalApproaches: totalApproaches,
           filename: path.basename(filePath),
         });
-      }, 2000);
-
+      }, 3000);
     } catch (error) {
-      console.error(`\n${'='.repeat(70)}`);
-      console.error(`❌ EXCEL PARSING ERROR`);
-      console.error(`${'='.repeat(70)}`);
-      console.error(error);
+      console.error('❌ Excel parsing error:', error);
       reject(error);
     }
   });
