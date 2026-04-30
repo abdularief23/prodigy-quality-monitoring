@@ -58,7 +58,104 @@ app.get('/', (req, res) => {
     },
   });
 });
+// ==================== GET OPTIMAL STEPS FOR PROBLEM ====================
+app.get('/api/problems/:id/optimal-steps', (req, res) => {
+  try {
+    const { id } = req.params;
 
+    db.all(
+      'SELECT * FROM optimal_steps WHERE problem_id = ? ORDER BY step_order ASC',
+      [id],
+      (err, rows) => {
+        if (err) {
+          console.error('❌ Database error:', err);
+          return res.status(500).json({
+            status: 'error',
+            message: err.message,
+          });
+        }
+
+        res.json({
+          status: 'success',
+          data: rows || [],
+          total: rows ? rows.length : 0,
+        });
+      }
+    );
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+});
+
+// ==================== GET APPROACH SCORES ====================
+app.get('/api/problems/:id/approach-scores', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.all(
+      'SELECT * FROM approach_scores WHERE problem_id = ? ORDER BY total_score DESC',
+      [id],
+      (err, rows) => {
+        if (err) {
+          console.error('❌ Database error:', err);
+          return res.status(500).json({
+            status: 'error',
+            message: err.message,
+          });
+        }
+
+        res.json({
+          status: 'success',
+          data: rows || [],
+          bestApproach: rows && rows.length > 0 ? rows[0] : null,
+        });
+      }
+    );
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+});
+
+// ==================== GET ALL APPROACHES ====================
+app.get('/api/problems/:id/approaches', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.all(
+      'SELECT * FROM approaches WHERE problem_id = ? ORDER BY approach_number ASC',
+      [id],
+      (err, rows) => {
+        if (err) {
+          console.error('❌ Database error:', err);
+          return res.status(500).json({
+            status: 'error',
+            message: err.message,
+          });
+        }
+
+        res.json({
+          status: 'success',
+          data: rows || [],
+          total: rows ? rows.length : 0,
+        });
+      }
+    );
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+});
 /**
  * GET /api/health
  */
@@ -714,5 +811,58 @@ app.listen(PORT, () => {
   console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
   console.log('='.repeat(70) + '\n');
 });
+// ==================== DEBUG: Check if steps exist ====================
+app.get('/api/debug/problems/:id/steps', (req, res) => {
+  const { id } = req.params;
+  
+  db.all(
+    'SELECT * FROM optimal_steps WHERE problem_id = ?',
+    [id],
+    (err, rows) => {
+      res.json({
+        problemId: id,
+        stepsFound: rows ? rows.length : 0,
+        steps: rows || [],
+        error: err ? err.message : null,
+      });
+    }
+  );
+});
 
+// ==================== DEBUG: Check approaches ====================
+app.get('/api/debug/problems/:id/approaches', (req, res) => {
+  const { id } = req.params;
+  
+  db.all(
+    'SELECT * FROM approaches WHERE problem_id = ?',
+    [id],
+    (err, rows) => {
+      res.json({
+        problemId: id,
+        approachesFound: rows ? rows.length : 0,
+        approaches: rows || [],
+        error: err ? err.message : null,
+      });
+    }
+  );
+});
+
+// ==================== DEBUG: Check scores ====================
+app.get('/api/debug/problems/:id/scores', (req, res) => {
+  const { id } = req.params;
+  
+  db.all(
+    'SELECT * FROM approach_scores WHERE problem_id = ? ORDER BY total_score DESC'  // ✅ ADD ?
+    [id],
+    (err, rows) => {
+      res.json({
+        problemId: id,
+        scoresFound: rows ? rows.length : 0,
+        bestScore: rows && rows.length > 0 ? rows[0] : null,
+        allScores: rows || [],
+        error: err ? err.message : null,
+      });
+    }
+  );
+});
 module.exports = app;

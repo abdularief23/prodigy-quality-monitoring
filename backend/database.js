@@ -29,7 +29,7 @@ function initializeDatabase() {
     )
   `);
 
-  // ==================== APPROACHES TABLE (NEW) ====================
+  // ==================== APPROACHES TABLE ====================
   db.run(`
     CREATE TABLE IF NOT EXISTS approaches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,19 +39,17 @@ function initializeDatabase() {
       step_sequence TEXT,
       approach_description TEXT,
       is_optimal INTEGER DEFAULT 0,
-      optimization_score REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (problem_id) REFERENCES problems(id),
       UNIQUE(problem_id, approach_number)
     )
   `);
 
-  // ==================== OPTIMAL STEPS TABLE (NEW) ====================
+  // ==================== OPTIMAL STEPS TABLE ====================
   db.run(`
     CREATE TABLE IF NOT EXISTS optimal_steps (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      problem_id TEXT NOT NULL UNIQUE,
-      approach_number INTEGER,
+      problem_id TEXT NOT NULL,
       step_order INTEGER,
       step_name TEXT,
       step_description TEXT,
@@ -64,34 +62,34 @@ function initializeDatabase() {
     )
   `);
 
+  // ==================== APPROACH SCORES TABLE ====================
+  db.run(`
+    CREATE TABLE IF NOT EXISTS approach_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      problem_id TEXT NOT NULL,
+      approach_number INTEGER,
+      safety_score REAL DEFAULT 0,
+      efficiency_score REAL DEFAULT 0,
+      time_score REAL DEFAULT 0,
+      risk_score REAL DEFAULT 0,
+      total_score REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (problem_id) REFERENCES problems(id),
+      UNIQUE(problem_id, approach_number)
+    )
+  `);
+
   // ==================== ANALYSIS TABLE ====================
   db.run(`
     CREATE TABLE IF NOT EXISTS analysis (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       problem_id TEXT NOT NULL,
+      approach_number INTEGER,
       category TEXT,
       sentiment TEXT,
       confidence REAL,
-      severity TEXT,
       rca_findings TEXT,
       ml_insights TEXT,
-      azure_result TEXT,
-      analyzed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (problem_id) REFERENCES problems(id)
-    )
-  `);
-
-  // ==================== RCA TABLE ====================
-  db.run(`
-    CREATE TABLE IF NOT EXISTS rca_analysis (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      problem_id TEXT NOT NULL,
-      approach_number INTEGER,
-      root_causes TEXT,
-      contributing_factors TEXT,
-      corrective_actions TEXT,
-      preventive_measures TEXT,
-      rca_score REAL,
       analyzed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (problem_id) REFERENCES problems(id)
     )
@@ -111,23 +109,6 @@ function initializeDatabase() {
       root_cause TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (problem_id) REFERENCES problems(id)
-    )
-  `);
-
-  // ==================== APPROACH SCORING TABLE (NEW) ====================
-  db.run(`
-    CREATE TABLE IF NOT EXISTS approach_scores (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      problem_id TEXT NOT NULL,
-      approach_number INTEGER,
-      safety_score REAL,
-      efficiency_score REAL,
-      time_score REAL,
-      risk_score REAL,
-      total_score REAL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (problem_id) REFERENCES problems(id),
-      UNIQUE(problem_id, approach_number)
     )
   `);
 
