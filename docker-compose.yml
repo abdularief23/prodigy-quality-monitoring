@@ -7,6 +7,10 @@ services:
       NODE_ENV: production
       AZURE_API_KEY: ${AZURE_API_KEY:-}
       AZURE_ENDPOINT: ${AZURE_ENDPOINT:-}
+    volumes:
+      - ./backend/prodigy.db:/app/prodigy.db
+      - ./backend/uploads:/app/uploads
+      - ./backend/tmp:/app/tmp
     restart: unless-stopped
 
   frontend:

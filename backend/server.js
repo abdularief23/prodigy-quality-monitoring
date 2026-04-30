@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { execFile } = require('child_process');
 require('dotenv').config();
 
 const app = express();
@@ -265,118 +266,34 @@ app.get('/api/insights', (req, res) => {
 
 // ==================== FULL RESET ====================
 app.post('/api/full-reset', (req, res) => {
-  console.log('\n⚠️ FULL RESET - DROPPING AND RECREATING ALL TABLES...\n');
+  console.log('\n⚠️ FULL RESET - CLEARING ALL TABLE DATA WITH SQLITE3 CLI...\n');
 
-  db.serialize(() => {
-    db.run('DROP TABLE IF EXISTS optimal_steps');
-    db.run('DROP TABLE IF EXISTS approach_scores');
-    db.run('DROP TABLE IF EXISTS why_why_analysis');
-    db.run('DROP TABLE IF EXISTS analysis');
-    db.run('DROP TABLE IF EXISTS approaches');
-    db.run('DROP TABLE IF EXISTS problems');
+  const dbFile = path.join(__dirname, 'prodigy.db');
+  const sql = `
+    PRAGMA foreign_keys = OFF;
+    DELETE FROM optimal_steps;
+    DELETE FROM approach_scores;
+    DELETE FROM why_why_analysis;
+    DELETE FROM analysis;
+    DELETE FROM approaches;
+    DELETE FROM problems;
+    DELETE FROM sqlite_sequence WHERE name IN ('approaches','optimal_steps','approach_scores','analysis','why_why_analysis');
+    PRAGMA foreign_keys = ON;
+  `;
 
-    console.log('✅ All tables dropped');
+  execFile('sqlite3', [dbFile, sql], (err, stdout, stderr) => {
+    if (err) {
+      console.error('❌ Full reset failed:', err.message, stderr);
+      return res.status(500).json({ status: 'error', message: stderr || err.message });
+    }
 
-    db.run(`
-      CREATE TABLE problems (
-        id TEXT PRIMARY KEY,
-        description TEXT NOT NULL,
-        location TEXT,
-        equipment TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'Open',
-        severity TEXT,
-        image_url TEXT,
-        source TEXT DEFAULT 'manual',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE approaches (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem_id TEXT NOT NULL,
-        approach_number INTEGER,
-        engineer_name TEXT,
-        step_sequence TEXT,
-        approach_description TEXT,
-        is_optimal INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (problem_id) REFERENCES problems(id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE optimal_steps (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem_id TEXT NOT NULL,
-        step_order INTEGER,
-        step_name TEXT,
-        step_description TEXT,
-        step_type TEXT,
-        step_risk TEXT,
-        priority INTEGER,
-        impact TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (problem_id) REFERENCES problems(id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE approach_scores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem_id TEXT NOT NULL,
-        approach_number INTEGER,
-        safety_score REAL DEFAULT 0,
-        efficiency_score REAL DEFAULT 0,
-        time_score REAL DEFAULT 0,
-        risk_score REAL DEFAULT 0,
-        total_score REAL DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (problem_id) REFERENCES problems(id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE analysis (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem_id TEXT NOT NULL,
-        approach_number INTEGER,
-        category TEXT,
-        sentiment TEXT,
-        confidence REAL,
-        rca_findings TEXT,
-        ml_insights TEXT,
-        analyzed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (problem_id) REFERENCES problems(id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE why_why_analysis (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem_id TEXT NOT NULL,
-        approach_number INTEGER,
-        why_1 TEXT,
-        why_2 TEXT,
-        why_3 TEXT,
-        why_4 TEXT,
-        why_5 TEXT,
-        root_cause TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (problem_id) REFERENCES problems(id)
-      )
-    `);
-
-    console.log('✅ All tables recreated\n');
-  });
-
-  setTimeout(() => {
-    res.json({
+    console.log('✅ All table data cleared\n');
+    return res.json({
       status: 'success',
       message: 'Full reset complete. Upload Excel now.',
+      data: { remainingProblems: 0 },
     });
-  }, 1000);
+  });
 });
 
 // ==================== VERIFY DATA ====================
