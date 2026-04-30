@@ -15,12 +15,17 @@ const fileFilter = (req, file, cb) => {
   const allowedMimes = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
+    'application/octet-stream',
+    'application/zip',
   ];
 
-  if (allowedMimes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const allowedExts = ['.xlsx', '.xls'];
+
+  if (allowedExts.includes(ext) || allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only Excel files allowed'), false);
+    cb(new Error(`Only Excel files allowed. Received mimetype: ${file.mimetype || 'unknown'}`), false);
   }
 };
 
